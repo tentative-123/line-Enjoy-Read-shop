@@ -49,6 +49,9 @@ WORKER_PUBLIC_URL = "https://line-harness.workers.dev"
 ADMIN_PUBLIC_URL = "https://line-harness-admin.pages.dev"
 LIFF_PUBLIC_URL = "https://line-harness-liff.pages.dev"
 CF_ACCOUNT_ID = "YOUR_DEV_ACCOUNT_ID"
+# CAFE_SESSION_SECRET / QR_SIGNING_SECRET / GATE_DEVICE_SECRET are secrets:
+# pnpm --filter worker exec wrangler secret put <NAME>
+# Set CAFE_MOCK_GATE=true only in a local .dev.vars to test MockGateProvider.
 
 # ═══════════════════════════════════════════════════════════════
 # 本番環境

@@ -564,6 +564,13 @@ async function initAffiliate(): Promise<void> {
 
 async function main() {
   try {
+    // Local visual review for the cafe UI. It is compiled out of production
+    // behavior because initCafe also requires import.meta.env.DEV.
+    if (import.meta.env.DEV && new URLSearchParams(window.location.search).get('cafePreview') === '1') {
+      const { initCafe } = await import('./cafe.js');
+      await initCafe(liff, LIFF_ID);
+      return;
+    }
     await liff.init({ liffId: LIFF_ID });
 
     if (!liff.isLoggedIn()) {
@@ -593,6 +600,9 @@ async function main() {
       await initEventBooking('history');
     } else if (page === 'affiliate') {
       await initAffiliate();
+    } else if (page === 'cafe') {
+      const { initCafe } = await import('./cafe.js');
+      await initCafe(liff, LIFF_ID);
     } else if (page === 'form') {
       const params = new URLSearchParams(window.location.search);
       const formId = params.get('id');

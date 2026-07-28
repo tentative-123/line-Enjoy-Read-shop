@@ -65,6 +65,14 @@ const menuSections = [
     ],
   },
   {
+    label: '無人咖啡廳',
+    items: [
+      { href: '/cafe', label: '營運儀表板', icon: 'M3 3h18v18H3V3zm4 4v10m5-6v6m5-10v10' },
+      { href: '/cafe/bookings', label: '預約紀錄', icon: 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7' },
+      { href: '/cafe/spaces', label: '空間與時段', icon: 'M3 21V8l9-5 9 5v13M9 21v-6h6v6' },
+    ],
+  },
+  {
     label: '設定',
     items: [
       { href: '/staff', label: 'スタッフ管理', icon: 'M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z' },
