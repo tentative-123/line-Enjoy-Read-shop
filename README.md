@@ -103,103 +103,260 @@ pnpm --filter worker exec wrangler d1 execute line-harness \
 
 Seed 只供 local development，系統不會自動匯入 production。
 
-## 部署到 Railway
+## 部署到 Railway（第一次使用完整教學）
 
-本 repository 使用 **兩個 Railway Service**：
+以下步驟假設你第一次使用 Railway。先不要一次處理所有 LINE 設定；我們會先讓 Backend 顯示綠色 `Online`，再建立管理後台。
 
-1. `enjoy-read-api`：Backend API 與 LIFF，使用根目錄 `Dockerfile`。
-2. `enjoy-read-admin`：管理後台，使用 `Dockerfile.web`。
+### 先了解：一個 Project 裡要有兩個 Service
 
-不要把兩個 service 合併成同一個 port；這樣 API 與後台可以分別設定健康檢查、domain 與重新部署。
+- **Enjoy Read API**：Backend API、LIFF 與 SQLite，相當於系統主機。使用 `Dockerfile`。
+- **Enjoy Read Admin**：管理後台。使用 `Dockerfile.web`。
 
-### 1. 建立 Backend Service
+你截圖中的 `Enjoy Read` 是第一個 Backend Service。畫面顯示 Build 與 Deploy 已完成、失敗點是 `Network › Healthcheck`。舊版啟動方式會先執行資料庫初始化，Railway 在這段時間找不到 `$PORT`，所以判定 healthcheck failure。現在的啟動器會先監聽 `$PORT` 並回報 `initializing`，再建立資料庫；修正後 health check 改用 `/healthz` 並允許 300 秒。
 
-1. 在 Railway 建立 Project，從此 GitHub repository 新增第一個 service。
-2. Service 的 config file 使用 `/railway.toml`；它會採用根目錄 `Dockerfile`。
-3. 建立 Railway Volume 並掛載至 **`/data`**。沒有 Volume 時資料會在重新部署後消失。
-4. 產生 Railway public domain，例如 `https://enjoy-read-api.up.railway.app`。
-5. 設定以下 variables：
+### 第 0 步：確認 GitHub 已經有最新修正
+
+在 Railway 點開 `Enjoy Read` Service → `Settings` → `Source`，確認：
+
+1. Repository 是這個 Enjoy Read repository。
+2. Branch 是包含最新程式碼的 branch。
+3. 最新 commit 至少包含 Railway health fix。
+4. Root Directory 保持 `/` 或空白，不要設成 `apps/worker`。
+
+如果 Railway 還停在舊 commit，請先 push 最新 branch，再按 `Deployments` → `Redeploy`。
+
+### 第 1 步：設定 Backend Service
+
+如果你已經有截圖中的 `Enjoy Read` Service，不需要刪掉，直接沿用。
+
+1. 點 `Enjoy Read` Service。
+2. 進入 `Settings`。
+3. 找到 **Config as Code**／Railway Config File。
+4. 填入：
+
+```text
+/railway.toml
+```
+
+5. 確認 Builder 使用 Dockerfile；設定檔會自動指定根目錄 `Dockerfile`。
+6. 不要自行設定固定 Port。Railway 會提供 `$PORT`，啟動器會自動使用。
+7. Healthcheck Path 應顯示 `/healthz`；Timeout 應為 `300` 秒。
+
+### 第 2 步：建立 Volume（一定要做）
+
+SQLite 必須放在持久化磁碟，否則每次重新部署資料都會消失。
+
+1. 回到 Project 畫布。
+2. 按 `New` 或右鍵空白區。
+3. 選擇 `Volume`。
+4. 將 Volume 連接到 `Enjoy Read` Backend Service。
+5. Mount Path 輸入：
+
+```text
+/data
+```
+
+6. 儲存。
+
+只建立 Volume 但沒有填 `/data` 不算完成。Backend replica 數量也必須維持 `1`。
+
+### 第 3 步：先加入最小測試 Variables
+
+進入 `Enjoy Read` → `Variables`，按 `New Variable` 或使用 Raw Editor。正式上線前要換成真正的 LINE 資料，但第一次測試部署可以先加入下列值：
 
 ```dotenv
-API_KEY=請使用長度至少32字元的隨機值
-LINE_CHANNEL_ID=LINE_Messaging_API_Channel_ID
-LINE_CHANNEL_ACCESS_TOKEN=LINE_Messaging_API_Channel_Access_Token
-LINE_CHANNEL_SECRET=LINE_Messaging_API_Channel_Secret
-LINE_LOGIN_CHANNEL_ID=LINE_Login_Channel_ID
-LINE_LOGIN_CHANNEL_SECRET=LINE_Login_Channel_Secret
-LIFF_URL=https://liff.line.me/你的LIFF_ID
-WORKER_URL=https://enjoy-read-api.up.railway.app
-ADMIN_ORIGIN=https://enjoy-read-admin.up.railway.app
+API_KEY=請放至少32字元的隨機字串
+LINE_CHANNEL_ID=temporary-channel-id
+LINE_CHANNEL_ACCESS_TOKEN=temporary-access-token
+LINE_CHANNEL_SECRET=temporary-channel-secret
+LINE_LOGIN_CHANNEL_ID=temporary-login-channel-id
+LINE_LOGIN_CHANNEL_SECRET=temporary-login-secret
+LIFF_URL=https://example.com
+WORKER_URL=https://example.com
+ADMIN_ORIGIN=https://example.com
 ADMIN_ALLOW_CROSS_SITE=true
-CAFE_SESSION_SECRET=請使用另一組至少32字元的隨機值
-QR_SIGNING_SECRET=請使用另一組至少32字元的隨機值
-GATE_DEVICE_SECRET=請使用另一組至少32字元的隨機值
+CAFE_SESSION_SECRET=請放另一組至少32字元的隨機字串
+QR_SIGNING_SECRET=請放另一組至少32字元的隨機字串
+GATE_DEVICE_SECRET=請放另一組至少32字元的隨機字串
 CAFE_MOCK_GATE=false
 ```
 
-Railway 會自動提供 `PORT`，請勿自行固定。Container 啟動時會：
+可以在自己電腦產生 secret：
 
-- 將 allow-list 中的 Railway variables 安全地寫入 runtime `.dev.vars`。
-- 在空白 Volume 套用 `bootstrap.sql` 與 migration `050_unmanned_cafe.sql`。
-- 只有 migration 完成後才寫入初始化 marker。
-- 監聽 `0.0.0.0:$PORT`。
-- 以 `/api/health` 作為 health check。
-
-### 2. 建立 Admin Service
-
-1. 從相同 repository 新增第二個 service。
-2. 將 Railway config file 設為 `/railway.web.toml`；它會採用 `Dockerfile.web`。
-3. 加入 build/runtime variable：
-
-```dotenv
-NEXT_PUBLIC_API_URL=https://enjoy-read-api.up.railway.app
+```bash
+openssl rand -hex 32
 ```
 
-4. 產生 public domain，例如 `https://enjoy-read-admin.up.railway.app`。
-5. 回到 Backend，確認 `ADMIN_ORIGIN` 正好等於 Admin HTTPS origin，不能加尾端 `/`。
-6. 重新部署 Backend，讓 credentialed CORS allow-list 生效。
+每一組 secret 都應該不同。不要把真正 secret 貼到 GitHub、Issue 或聊天截圖。
 
-Admin service 是靜態輸出，不需要 Volume。健康檢查路徑為 `/healthz`。
+### 第 4 步：重新部署 Backend
 
-### 3. 設定 LINE Login 與 LIFF
+1. 進入 `Deployments`。
+2. 點最新 deployment 右側 `⋮`。
+3. 選 `Redeploy`；如果有 `Deploy Latest Commit`，優先使用它。
+4. 點 `View logs`。
 
-在 LINE Developers Console：
-
-1. LINE Login channel 的 Web app callback/domain 加入 Backend Railway domain。
-2. 建立 LIFF app，Endpoint URL 設成：
+正常第一次啟動會依序看到：
 
 ```text
-https://enjoy-read-api.up.railway.app/?page=cafe&liffId=你的LIFF_ID
+[railway] Railway health server 已監聽 0.0.0.0:xxxx
+[railway] 偵測到新的 Volume，開始建立資料庫
+[railway] 資料庫初始化完成
+[railway] Enjoy Read 已就緒
 ```
 
-3. Scope 至少啟用 `openid` 與 `profile`。
-4. 將 LIFF ID 存入對應 `line_accounts.liff_id`。
-5. Rich Menu 的「立即預約」使用 LIFF URL：
+Health check 在初始化期間會收到：
+
+```json
+{"success":true,"data":{"status":"initializing","phase":"database-bootstrap"}}
+```
+
+Worker 完成後會變成：
+
+```json
+{"success":true,"data":{"status":"ok","phase":"ready"}}
+```
+
+### 第 5 步：產生 Backend 公開網址
+
+部署變成綠色 `Online` 後：
+
+1. 進入 Backend `Settings`。
+2. 找到 `Networking`／`Public Networking`。
+3. 點 `Generate Domain`。
+4. 記下網址，例如：
+
+```text
+https://enjoy-read-api-production.up.railway.app
+```
+
+5. 回到 `Variables`，修改：
+
+```dotenv
+WORKER_URL=https://enjoy-read-api-production.up.railway.app
+```
+
+6. 儲存後 Railway 會重新部署。
+7. 用瀏覽器開啟：
+
+```text
+https://enjoy-read-api-production.up.railway.app/healthz
+```
+
+看到 `status: ok` 就表示 Backend 網路已成功。
+
+### 第 6 步：建立 Admin Service
+
+回到同一個 Railway Project：
+
+1. 按 `New` → `GitHub Repo`。
+2. 再選一次同一個 repository。
+3. 將新 Service 命名為 `Enjoy Read Admin`。
+4. 進入 Admin `Settings` → Config File，填入：
+
+```text
+/railway.web.toml
+```
+
+5. 進入 Admin `Variables`，加入：
+
+```dotenv
+NEXT_PUBLIC_API_URL=https://你的Backend網址.up.railway.app
+```
+
+6. 重新部署 Admin。
+7. 部署成功後到 `Settings` → `Networking` → `Generate Domain`。
+8. 記下 Admin 網址，例如：
+
+```text
+https://enjoy-read-admin-production.up.railway.app
+```
+
+Admin 不需要 Volume，健康檢查路徑是 `/healthz`。
+
+### 第 7 步：讓 Admin 可以呼叫 Backend
+
+回到 Backend Service 的 `Variables`，把以下值換成真正的 Admin 網址，不能在最後加 `/`：
+
+```dotenv
+ADMIN_ORIGIN=https://enjoy-read-admin-production.up.railway.app
+ADMIN_ALLOW_CROSS_SITE=true
+```
+
+儲存並重新部署 Backend，否則瀏覽器會因 CORS／Cookie 規則擋住登入。
+
+### 第 8 步：換成真正 LINE Variables
+
+到 LINE Developers Console 取得並替換 Backend Variables：
+
+```dotenv
+LINE_CHANNEL_ID=Messaging API Channel ID
+LINE_CHANNEL_ACCESS_TOKEN=Messaging API Channel Access Token
+LINE_CHANNEL_SECRET=Messaging API Channel Secret
+LINE_LOGIN_CHANNEL_ID=LINE Login Channel ID
+LINE_LOGIN_CHANNEL_SECRET=LINE Login Channel Secret
+LIFF_URL=https://liff.line.me/你的LIFF_ID
+WORKER_URL=https://你的Backend網址.up.railway.app
+```
+
+LINE Login 與 Messaging API 是不同 channel 時，不要把兩組 Channel ID／Secret 混在一起。
+
+### 第 9 步：設定 LIFF
+
+在 LINE Developers Console 的 LINE Login Channel：
+
+1. 開啟 `LIFF` 分頁。
+2. 新增 LIFF App。
+3. Size 建議選 `Full`。
+4. Endpoint URL：
+
+```text
+https://你的Backend網址.up.railway.app/?page=cafe&liffId=你的LIFF_ID
+```
+
+5. Scope 開啟 `openid` 與 `profile`。
+6. 儲存後取得 LIFF ID。
+7. 將 LIFF ID 寫入系統對應的 `line_accounts.liff_id`。
+8. Rich Menu 的「立即預約」連結使用：
 
 ```text
 https://liff.line.me/你的LIFF_ID?page=cafe&liffId=你的LIFF_ID
 ```
 
-### 4. 第一次部署檢查
+### 第 10 步：完成部署驗收
+
+請依序檢查：
 
 ```bash
-curl https://enjoy-read-api.up.railway.app/api/health
-curl -I https://enjoy-read-admin.up.railway.app/healthz
+curl https://你的Backend網址.up.railway.app/healthz
+curl https://你的Backend網址.up.railway.app/api/health
+curl -I https://你的Admin網址.up.railway.app/healthz
 ```
 
-預期 Backend 回傳：
+然後實際操作：
 
-```json
-{"success":true,"data":{"status":"ok"}}
-```
-
-接著依序檢查：
-
-1. Admin 可以登入。
+1. Admin 網址可以開啟。
 2. LIFF 可以完成 LINE Login。
-3. `/api/cafe/venues` 有 seed 或自行建立的據點。
-4. 建立一筆測試預約並從「我的預約」讀回。
-5. Railway 重新部署 Backend 後，測試預約仍存在；若消失，代表 Volume 未掛載到 `/data`。
+3. `/api/cafe/venues` 可以回傳據點。
+4. 建立測試預約。
+5. 從「我的預約」讀回同一筆預約。
+6. 手動 Redeploy Backend。
+7. Redeploy 後預約仍存在，確認 `/data` Volume 正常。
+
+### 看到 Healthcheck failure 時怎麼處理
+
+依序檢查，不要直接刪掉 Project：
+
+1. `Deployments` → 失敗項目 → `View logs`。
+2. 搜尋 `[railway] 啟動失敗`、`ERROR` 或 `permission denied`。
+3. 如果完全沒有 `[railway] Railway health server 已監聽`：確認使用最新 commit、根目錄 `Dockerfile`、Config File `/railway.toml`。
+4. 如果顯示 `/data` permission error：刪除錯誤 Volume 後重新建立，Mount Path 必須是 `/data`。
+5. 如果顯示 `dist/client does not exist`：代表 Docker build 沒有使用根目錄 `Dockerfile`，通常是 Root Directory 被錯設成 `apps/worker`。
+6. 如果一直停在 database bootstrap：確認 Volume 空間足夠，並把完整 Deploy Log 保存下來。
+7. 如果 Backend 已 `Online` 但 Admin 登入失敗：檢查 `ADMIN_ORIGIN` 是否完全等於 Admin HTTPS origin。
+8. 如果修改 Variable 後仍是舊結果：按 `Deploy Latest Commit`，不要只 Restart 舊 deployment。
+
+若仍然失敗，請提供 `View logs` 裡從第一行到錯誤行的文字；只有 `Healthcheck failure` 截圖看不到實際 process error。
 
 ## Railway 資料備份與限制
 
