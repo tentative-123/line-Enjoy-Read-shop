@@ -14,6 +14,7 @@ RUN pnpm install --frozen-lockfile \
 
 FROM node:22-bookworm-slim AS runtime
 ENV NODE_ENV=production
+ENV ENJOY_READ_RAILWAY_LAUNCHER_VERSION=2
 ENV PNPM_HOME=/pnpm
 ENV PATH=$PNPM_HOME:$PATH
 RUN corepack enable && corepack prepare pnpm@9.15.4 --activate
@@ -21,4 +22,4 @@ WORKDIR /app
 COPY --from=build /app /app
 RUN chmod +x scripts/railway-start.sh
 EXPOSE 8080
-CMD ["bash", "scripts/railway-start.sh"]
+CMD ["node", "scripts/railway-server.mjs"]

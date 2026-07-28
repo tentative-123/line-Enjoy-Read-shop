@@ -5,9 +5,9 @@ import process from 'node:process';
 
 const publicPort = Number(process.env.PORT || 8080);
 const internalPort = Number(process.env.RAILWAY_INTERNAL_PORT || 8788);
-const dataDir = process.env.RAILWAY_DATA_DIR || '/data';
-const persistDir = `${dataDir}/wrangler`;
-const marker = `${dataDir}/.line-harness-initialized`;
+let dataDir = process.env.RAILWAY_DATA_DIR || '/data';
+let persistDir = `${dataDir}/wrangler`;
+let marker = `${dataDir}/.line-harness-initialized`;
 let phase = 'starting';
 let upstreamReady = false;
 let child;
@@ -77,7 +77,8 @@ async function proxyRequest(request, response) {
 // the first boot creates SQLite tables; normal traffic receives 503 until the
 // Worker is actually ready.
 const server = createServer((request, response) => {
-  if (request.url === '/healthz' || request.url === '/api/health' || request.url === '/health') {
+  const pathname = new URL(request.url || '/', 'http://railway.local').pathname;
+  if (pathname === '/healthz' || pathname === '/api/health' || pathname === '/health') {
     response.writeHead(200, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' });
     response.end(JSON.stringify({ success: true, data: { status: upstreamReady ? 'ok' : 'initializing', phase } }));
     return;
@@ -87,6 +88,10 @@ const server = createServer((request, response) => {
 
 server.listen(publicPort, '0.0.0.0', () => {
   log(`Railway health server 已監聽 0.0.0.0:${publicPort}`);
+});
+server.on('error', (error) => {
+  console.error(`[railway] 無法監聽 Railway PORT=${publicPort}：`, error);
+  process.exit(1);
 });
 
 async function waitForWorker() {
@@ -105,7 +110,17 @@ async function waitForWorker() {
 }
 
 async function start() {
-  await mkdir(persistDir, { recursive: true });
+  try {
+    await mkdir(persistDir, { recursive: true });
+  } catch (error) {
+    // Keep a first-time user's service deployable even when /data was not yet
+    // mounted. The warning is intentionally loud because /tmp is ephemeral.
+    console.error(`[railway] 無法使用 ${dataDir}，暫時改用 /tmp/enjoy-read-data。重新部署會遺失資料。`, error);
+    dataDir = '/tmp/enjoy-read-data';
+    persistDir = `${dataDir}/wrangler`;
+    marker = `${dataDir}/.line-harness-initialized`;
+    await mkdir(persistDir, { recursive: true });
+  }
   phase = 'environment';
   await import('./railway-env.mjs');
 

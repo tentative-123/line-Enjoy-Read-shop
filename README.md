@@ -141,6 +141,7 @@ Seed 只供 local development，系統不會自動匯入 production。
 5. 確認 Builder 使用 Dockerfile；設定檔會自動指定根目錄 `Dockerfile`。
 6. 不要自行設定固定 Port。Railway 會提供 `$PORT`，啟動器會自動使用。
 7. Healthcheck Path 應顯示 `/healthz`；Timeout 應為 `300` 秒。
+8. Start Command 應顯示 `node scripts/railway-server.mjs`。這項設定會明確覆蓋舊 deployment 的啟動指令。
 
 ### 第 2 步：建立 Volume（一定要做）
 
@@ -357,6 +358,8 @@ curl -I https://你的Admin網址.up.railway.app/healthz
 8. 如果修改 Variable 後仍是舊結果：按 `Deploy Latest Commit`，不要只 Restart 舊 deployment。
 
 若仍然失敗，請提供 `View logs` 裡從第一行到錯誤行的文字；只有 `Healthcheck failure` 截圖看不到實際 process error。
+
+你上一則貼的是 **Build Logs**；它只能證明 Docker image 建立成功。這次需要的是 Service 的 **Deploy Logs／Runtime Logs**，內容應包含 `[railway]` 開頭的訊息。如果完全沒有 `[railway]`，通常表示 Railway 還在執行舊 image 或舊 Start Command。
 
 ## Railway 資料備份與限制
 
