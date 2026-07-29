@@ -138,6 +138,25 @@ export type Env = {
 
 const app = new Hono<Env>();
 
+// Railway diagnostics for admin login. Log only origins and boolean presence;
+// never log the API key, cookies, or any LINE/QR secrets. Keeping this before
+// CORS makes a rejected preflight visible in the Backend deployment log.
+app.use('/api/auth/*', async (c, next) => {
+  const origin = c.req.header('origin') ?? '(none)';
+  const allowedOrigin = resolveCorsOrigin(c.env, c.req.header('origin'), c.req.url);
+  console.log('[admin-auth] request', {
+    method: c.req.method,
+    path: new URL(c.req.url).pathname,
+    origin,
+    corsAllowed: Boolean(allowedOrigin),
+    configuredAdminOrigin: c.env.ADMIN_ORIGIN ?? '(unset)',
+    configuredWorkerUrl: c.env.WORKER_URL ?? '(unset)',
+    crossSiteEnabled: c.env.ADMIN_ALLOW_CROSS_SITE === 'true',
+    apiKeyConfigured: Boolean(c.env.API_KEY),
+  });
+  await next();
+});
+
 // CORS — credentialed cookie auth cannot use a wildcard origin. Reflect only
 // same-origin requests and origins on the ADMIN_ORIGIN allowlist; everything
 // else gets no Access-Control-Allow-Origin header (browser blocks it). Bearer

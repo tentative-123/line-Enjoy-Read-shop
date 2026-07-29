@@ -123,6 +123,10 @@ async function start() {
   }
   phase = 'environment';
   await import('./railway-env.mjs');
+  log(`Admin 登入設定：WORKER_URL=${process.env.WORKER_URL || '(unset)'}`);
+  log(`Admin 登入設定：ADMIN_ORIGIN=${process.env.ADMIN_ORIGIN || '(unset)'}`);
+  log(`Admin 登入設定：ADMIN_ALLOW_CROSS_SITE=${process.env.ADMIN_ALLOW_CROSS_SITE === 'true'}`);
+  log(`Admin 登入設定：API_KEY=${process.env.API_KEY ? `configured(length=${process.env.API_KEY.length})` : 'MISSING'}`);
 
   if (!(await fileExists(marker))) {
     phase = 'database-bootstrap';

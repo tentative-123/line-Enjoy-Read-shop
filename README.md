@@ -302,6 +302,11 @@ ADMIN_ALLOW_CROSS_SITE=true
 
 只有畫面顯示「API Key 不正確」（HTTP 401）時，才需要檢查 Backend 的 `API_KEY`。
 
+Backend 重新部署後，啟動 Log 會以不洩漏密鑰的方式列出 `WORKER_URL`、`ADMIN_ORIGIN`、
+`ADMIN_ALLOW_CROSS_SITE`，以及 `API_KEY` 是否存在與字元長度。每次登入／CORS 預檢也會記錄
+來源 Origin、是否通過 CORS、HTTP 方法與登入結果；Log 不會輸出 API Key、Cookie 或 LINE Secret。
+若 Log 完全沒有 `[admin-auth] request`，表示 Admin 仍指向錯誤的 Backend 網址或請求尚未抵達。
+
 ### 第 8 步：換成真正 LINE Variables
 
 到 LINE Developers Console 取得並替換 Backend Variables：

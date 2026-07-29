@@ -46,10 +46,10 @@ export default function LoginPage() {
         }
         router.push('/')
       } else if (res.status === 401) {
-        setError('APIキーが正しくありません')
+        setError('API Key 不正確，請確認輸入值與 Backend 的 API_KEY 完全相同。')
       } else {
         // Surface topology / configuration errors (e.g. cross-site cookie guard).
-        let message = 'ログインに失敗しました'
+        let message = `登入失敗（HTTP ${res.status}）`
         try {
           const data = await res.json()
           if (data?.error) message = data.error
