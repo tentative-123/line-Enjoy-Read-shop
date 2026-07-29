@@ -68,10 +68,13 @@ export default function LoginPage() {
           return
         }
         const sessionData = await sessionRes.json().catch(() => null)
-        if (!sessionData?.success || !sessionData?.data) {
-          console.error('[admin-login] Session response is missing staff data', sessionData)
-          setError('密碼正確，但 Session 回應不完整；請查看 Backend 的 [admin-auth] Log。')
-          return
+        // `/api/auth/session` is protected by the Worker auth middleware. A 2xx
+        // response already proves that the HttpOnly cookie was accepted. Older
+        // Worker bundles can omit the optional `data` field after routing
+        // through a mounted Hono sub-app; keep the profile cached from the
+        // successful login response instead of creating a redirect loop.
+        if (!sessionData?.success) {
+          console.warn('[admin-login] Session verified with a legacy response payload', sessionData)
         }
         router.replace('/')
       } else if (res.status === 401) {

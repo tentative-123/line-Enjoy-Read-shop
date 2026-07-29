@@ -28,13 +28,15 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
           throw new Error(`unauthenticated (${res.status})`)
         }
         const data = await res.json()
+        // HTTP 2xx from this protected endpoint is the authentication decision.
+        // Profile data is useful for labels/RBAC hints but is not a credential;
+        // every real API remains protected by the HttpOnly cookie server-side.
         if (!data?.success || !data?.data) {
-          console.error('[auth-guard] Session response is missing staff data', data)
-          throw new Error('unauthenticated (missing staff data)')
+          console.warn('[auth-guard] Session accepted without optional staff profile', data)
         }
-        if (data.data.name) localStorage.setItem('lh_staff_name', data.data.name)
-        if (data.data.role) localStorage.setItem('lh_staff_role', data.data.role)
-        if (data.csrfToken) localStorage.setItem('lh_csrf', data.csrfToken)
+        if (data?.data?.name) localStorage.setItem('lh_staff_name', data.data.name)
+        if (data?.data?.role) localStorage.setItem('lh_staff_role', data.data.role)
+        if (data?.csrfToken) localStorage.setItem('lh_csrf', data.csrfToken)
         if (!cancelled) setChecked(true)
       } catch (error) {
         console.error('[auth-guard] Redirecting to login', error)

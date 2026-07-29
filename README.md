@@ -320,6 +320,10 @@ Railway Admin Docker image 會把瀏覽器的 `/backend/*` 同源請求反向代
 開啟第三方 Cookie。`NEXT_PUBLIC_API_URL` 仍須填公開 Backend Origin；nginx 會在 Container 啟動時
 將它寫入 proxy 設定。修改後必須重新 **Build／Redeploy Admin**，只 Restart 不會更新 Docker image。
 
+`/api/auth/session` 是受保護端點，因此 HTTP 2xx 本身就代表 Backend 已接受 Session Cookie。Admin
+不會再因舊 Worker 回應省略可選的 staff profile 而誤判未登入；姓名與角色只用於介面標籤，所有資料
+API 仍由 Backend Cookie 驗證，不會因此降低權限保護。
+
 ### 第 8 步：換成真正 LINE Variables
 
 到 LINE Developers Console 取得並替換 Backend Variables：
