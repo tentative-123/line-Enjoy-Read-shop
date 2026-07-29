@@ -12,7 +12,7 @@ export default function LoginPage() {
     e.preventDefault()
     setLoading(true)
     setError('')
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL?.replace(/\/+$/, '')
 
     try {
       if (!apiUrl) {

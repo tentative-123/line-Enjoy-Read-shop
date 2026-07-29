@@ -52,7 +52,14 @@ async function proxyRequest(request, response) {
   delete headers.connection;
 
   try {
-    const upstream = await fetch(`http://127.0.0.1:${internalPort}${request.url}`, {
+    // A pasted NEXT_PUBLIC_API_URL may contain a trailing slash, producing
+    // `//api/...`. Canonicalize at the Railway boundary as a compatibility net
+    // for stale Admin bundles while new builds normalize the URL at source.
+    const upstreamPath = (request.url || '/').replace(/^\/{2,}/, '/');
+    if (upstreamPath !== request.url) {
+      log(`已修正重複斜線路徑：${request.url} -> ${upstreamPath}`);
+    }
+    const upstream = await fetch(`http://127.0.0.1:${internalPort}${upstreamPath}`, {
       method: request.method,
       headers,
       body: request.method === 'GET' || request.method === 'HEAD' ? undefined : body,

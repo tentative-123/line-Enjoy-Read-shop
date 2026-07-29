@@ -19,11 +19,16 @@ function readGitSha(): string | null {
 const buildSha =
   process.env.APP_COMMIT_SHA || process.env.GITHUB_SHA || process.env.CF_PAGES_COMMIT_SHA || readGitSha() || 'local'
 const buildTime = process.env.APP_BUILD_TIME || new Date().toISOString()
+const publicApiUrl = process.env.NEXT_PUBLIC_API_URL?.replace(/\/+$/, '')
 
 const nextConfig: NextConfig = {
   output: 'export',
   transpilePackages: ['@line-crm/shared'],
   env: {
+    // Railway users commonly paste the Backend URL with a trailing slash. All
+    // callers append `/api/...`, so canonicalize once at build time to prevent
+    // requests such as `//api/auth/login`.
+    NEXT_PUBLIC_API_URL: publicApiUrl,
     APP_VERSION: pkg.version,
     APP_COMMIT_SHA: buildSha.slice(0, 12),
     APP_BUILD_TIME: buildTime,

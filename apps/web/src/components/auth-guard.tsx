@@ -20,7 +20,8 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
     const checkSession = async () => {
       try {
         localStorage.removeItem('lh_api_key')
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL?.replace(/\/+$/, '')
+        if (!apiUrl) throw new Error('NEXT_PUBLIC_API_URL is not configured')
         const res = await fetch(`${apiUrl}/api/auth/session`, { credentials: 'include' })
         if (!res.ok) throw new Error('unauthenticated')
         const data = await res.json()

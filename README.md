@@ -307,6 +307,10 @@ Backend 重新部署後，啟動 Log 會以不洩漏密鑰的方式列出 `WORKE
 來源 Origin、是否通過 CORS、HTTP 方法與登入結果；Log 不會輸出 API Key、Cookie 或 LINE Secret。
 若 Log 完全沒有 `[admin-auth] request`，表示 Admin 仍指向錯誤的 Backend 網址或請求尚未抵達。
 
+若 Wrangler Log 出現 `//api/auth/login`，表示 Admin 建置時的 `NEXT_PUBLIC_API_URL` 結尾有 `/`，
+舊版會因此得到 404。新版會在 Admin build 與 Backend Railway proxy 兩側自動移除重複斜線，但仍建議
+將 Railway Variable 保存為 `https://你的Backend網址`（結尾不加 `/`）。
+
 ### 第 8 步：換成真正 LINE Variables
 
 到 LINE Developers Console 取得並替換 Backend Variables：
