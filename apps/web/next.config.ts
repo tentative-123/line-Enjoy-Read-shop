@@ -19,7 +19,11 @@ function readGitSha(): string | null {
 const buildSha =
   process.env.APP_COMMIT_SHA || process.env.GITHUB_SHA || process.env.CF_PAGES_COMMIT_SHA || readGitSha() || 'local'
 const buildTime = process.env.APP_BUILD_TIME || new Date().toISOString()
-const publicApiUrl = process.env.NEXT_PUBLIC_API_URL?.replace(/\/+$/, '')
+const externalApiUrl = process.env.NEXT_PUBLIC_API_URL?.replace(/\/+$/, '')
+// Railway serves the static Admin and Backend on different `up.railway.app`
+// sites. Modern browsers can block the Backend's cookie as third-party. The
+// Admin nginx image therefore exposes a same-origin `/backend` reverse proxy.
+const publicApiUrl = process.env.RAILWAY_ADMIN_PROXY === 'true' ? '/backend' : externalApiUrl
 
 const nextConfig: NextConfig = {
   output: 'export',
@@ -29,6 +33,7 @@ const nextConfig: NextConfig = {
     // callers append `/api/...`, so canonicalize once at build time to prevent
     // requests such as `//api/auth/login`.
     NEXT_PUBLIC_API_URL: publicApiUrl,
+    NEXT_PUBLIC_WORKER_PUBLIC_URL: externalApiUrl,
     APP_VERSION: pkg.version,
     APP_COMMIT_SHA: buildSha.slice(0, 12),
     APP_BUILD_TIME: buildTime,

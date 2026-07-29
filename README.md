@@ -315,6 +315,11 @@ Backend 重新部署後，啟動 Log 會以不洩漏密鑰的方式列出 `WORKE
 `/api/auth/session` 驗證 Cookie。若瀏覽器阻擋跨網站 Cookie，登入頁會停留並顯示明確訊息，
 不再先跳到 Dashboard；瀏覽器 Console 也會以 `[admin-login]` 或 `[auth-guard]` 標示失敗階段。
 
+Railway Admin Docker image 會把瀏覽器的 `/backend/*` 同源請求反向代理到
+`NEXT_PUBLIC_API_URL`，因此 Session Cookie 會成為 Admin Domain 的第一方 Cookie，不需要使用者手動
+開啟第三方 Cookie。`NEXT_PUBLIC_API_URL` 仍須填公開 Backend Origin；nginx 會在 Container 啟動時
+將它寫入 proxy 設定。修改後必須重新 **Build／Redeploy Admin**，只 Restart 不會更新 Docker image。
+
 ### 第 8 步：換成真正 LINE Variables
 
 到 LINE Developers Console 取得並替換 Backend Variables：
