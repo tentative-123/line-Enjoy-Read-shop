@@ -311,6 +311,10 @@ Backend 重新部署後，啟動 Log 會以不洩漏密鑰的方式列出 `WORKE
 舊版會因此得到 404。新版會在 Admin build 與 Backend Railway proxy 兩側自動移除重複斜線，但仍建議
 將 Railway Variable 保存為 `https://你的Backend網址`（結尾不加 `/`）。
 
+若正確密碼登入後畫面閃一下又返回 `/login`，新版 Admin 會在跳轉前先呼叫
+`/api/auth/session` 驗證 Cookie。若瀏覽器阻擋跨網站 Cookie，登入頁會停留並顯示明確訊息，
+不再先跳到 Dashboard；瀏覽器 Console 也會以 `[admin-login]` 或 `[auth-guard]` 標示失敗階段。
+
 ### 第 8 步：換成真正 LINE Variables
 
 到 LINE Developers Console 取得並替換 Backend Variables：

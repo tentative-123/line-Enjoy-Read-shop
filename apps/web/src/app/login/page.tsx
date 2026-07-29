@@ -32,19 +32,48 @@ export default function LoginPage() {
       if (res.ok) {
         localStorage.removeItem('lh_api_key')
         try {
-          const loginData = await res.json()
-          if (loginData.success && loginData.data) {
-            localStorage.setItem('lh_staff_name', loginData.data.name)
-            localStorage.setItem('lh_staff_role', loginData.data.role)
+          const parsed = await res.json() as {
+            success?: boolean
+            data?: { name?: string; role?: string }
+            csrfToken?: string
+          }
+          if (parsed.success && parsed.data) {
+            if (parsed.data.name) localStorage.setItem('lh_staff_name', parsed.data.name)
+            if (parsed.data.role) localStorage.setItem('lh_staff_role', parsed.data.role)
           }
           // Cache the CSRF token for mutating requests (double-submit).
-          if (loginData.csrfToken) {
-            localStorage.setItem('lh_csrf', loginData.csrfToken)
+          if (parsed.csrfToken) {
+            localStorage.setItem('lh_csrf', parsed.csrfToken)
           }
         } catch {
           // Profile / CSRF caching is best-effort.
         }
-        router.push('/')
+
+        // Do not navigate optimistically. On browsers that block a cross-site
+        // Set-Cookie, the dashboard AuthGuard would immediately send the user
+        // back to /login, which looks like a confusing flash. Verify that the
+        // newly issued HttpOnly cookie is usable before leaving this page.
+        const sessionRes = await fetch(`${apiUrl}/api/auth/session`, {
+          credentials: 'include',
+          cache: 'no-store',
+        })
+        if (!sessionRes.ok) {
+          console.error('[admin-login] Login succeeded but session verification failed', {
+            status: sessionRes.status,
+          })
+          setError(
+            `密碼正確，但瀏覽器未保存登入 Cookie（HTTP ${sessionRes.status}）。` +
+            '請允許此網站使用跨網站 Cookie，或使用同一主網域的 Admin／Backend 自訂網域。'
+          )
+          return
+        }
+        const sessionData = await sessionRes.json().catch(() => null)
+        if (!sessionData?.success || !sessionData?.data) {
+          console.error('[admin-login] Session response is missing staff data', sessionData)
+          setError('密碼正確，但 Session 回應不完整；請查看 Backend 的 [admin-auth] Log。')
+          return
+        }
+        router.replace('/')
       } else if (res.status === 401) {
         setError('API Key 不正確，請確認輸入值與 Backend 的 API_KEY 完全相同。')
       } else {
