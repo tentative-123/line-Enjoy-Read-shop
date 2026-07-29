@@ -286,6 +286,22 @@ ADMIN_ALLOW_CROSS_SITE=true
 
 儲存並重新部署 Backend，否則瀏覽器會因 CORS／Cookie 規則擋住登入。
 
+#### Admin 顯示「無法連線至後端」
+
+這個訊息代表瀏覽器尚未取得 Backend 的 HTTP 回應，通常是 Backend 網址、DNS 或 CORS
+設定錯誤，**不是 API Key 錯誤**。請依序檢查：
+
+1. Admin 的 `NEXT_PUBLIC_API_URL` 必須是可公開存取且包含 `https://` 的 Backend Domain，不能使用
+   `*.railway.internal`、`127.0.0.1` 或 `0.0.0.0`。
+2. 直接開啟 `${NEXT_PUBLIC_API_URL}/healthz`，必須看到 `status: ok`。
+3. Backend 的 `ADMIN_ORIGIN` 必須完全等於 Admin Origin，例如
+   `https://enjoy-read-admin-production.up.railway.app`，結尾不可加路徑。
+4. Backend 設定 `ADMIN_ALLOW_CROSS_SITE=true`，然後重新部署 Backend。
+5. 修改 `NEXT_PUBLIC_API_URL` 後必須重新 **Build／Redeploy Admin**；只 Restart 不會更新已編譯進
+   JavaScript 的網址。
+
+只有畫面顯示「API Key 不正確」（HTTP 401）時，才需要檢查 Backend 的 `API_KEY`。
+
 ### 第 8 步：換成真正 LINE Variables
 
 到 LINE Developers Console 取得並替換 Backend Variables：

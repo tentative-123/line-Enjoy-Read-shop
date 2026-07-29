@@ -12,9 +12,9 @@ export default function LoginPage() {
     e.preventDefault()
     setLoading(true)
     setError('')
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL
 
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL
       if (!apiUrl) {
         setError('NEXT_PUBLIC_API_URL is not set in build env')
         setLoading(false)
@@ -58,8 +58,16 @@ export default function LoginPage() {
         }
         setError(message)
       }
-    } catch {
-      setError('接続に失敗しました')
+    } catch (cause) {
+      // fetch() only rejects for network-level failures (DNS, TLS, CORS, or an
+      // unreachable backend). A wrong API key is handled above as HTTP 401, so
+      // do not misleadingly ask the operator to change the key here.
+      const reason = cause instanceof Error ? cause.message : 'Unknown network error'
+      console.error('[admin-login] Backend connection failed', { apiUrl, reason })
+      setError(
+        `無法連線至後端（${apiUrl}）。這不是 API Key 錯誤；請確認 Backend 網址可開啟，` +
+        '並在 Backend 設定正確的 ADMIN_ORIGIN 後重新部署。'
+      )
     } finally {
       setLoading(false)
     }
@@ -72,18 +80,18 @@ export default function LoginPage() {
           <div className="w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold text-lg mx-auto mb-3" style={{ backgroundColor: '#06C755' }}>
             H
           </div>
-          <h1 className="text-xl font-bold text-gray-900">L Harness</h1>
-          <p className="text-sm text-gray-500 mt-1">管理画面にログイン</p>
+          <h1 className="text-xl font-bold text-gray-900">Enjoy Read</h1>
+          <p className="text-sm text-gray-500 mt-1">登入管理後台</p>
         </div>
 
         <form onSubmit={handleLogin}>
           <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-1">API Key</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">管理員 API Key</label>
             <input
               type="password"
               value={apiKey}
               onChange={(e) => setApiKey(e.target.value)}
-              placeholder="APIキーを入力"
+              placeholder="請輸入 Backend 的 API_KEY"
               className="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
               autoFocus
             />
@@ -99,7 +107,7 @@ export default function LoginPage() {
             className="w-full py-3 text-white font-medium rounded-lg transition-opacity hover:opacity-90 disabled:opacity-50"
             style={{ backgroundColor: '#06C755' }}
           >
-            {loading ? 'ログイン中...' : 'ログイン'}
+            {loading ? '登入中…' : '登入'}
           </button>
         </form>
       </div>
