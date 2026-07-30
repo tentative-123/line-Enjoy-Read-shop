@@ -83,7 +83,7 @@ export type BroadcastInsight = {
   fetchedAt?: string | null
 }
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL
+const API_URL = process.env.NEXT_PUBLIC_API_URL?.replace(/\/+$/, '')
 if (!API_URL) {
   throw new Error(
     'NEXT_PUBLIC_API_URL is not set. Build cannot proceed without a valid API URL. ' +

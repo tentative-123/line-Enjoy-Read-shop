@@ -40,12 +40,24 @@ adminAuth.post('/api/auth/login', async (c) => {
   const staff = await authenticateApiToken(c, apiKey || null);
 
   if (!staff) {
+    console.warn('[admin-auth] login denied', {
+      reason: 'INVALID_API_KEY',
+      origin: c.req.header('origin') ?? '(none)',
+      receivedKeyLength: apiKey.length,
+      configuredKeyLength: c.env.API_KEY?.length ?? 0,
+    });
     return c.json({ success: false, error: 'Unauthorized' }, 401);
   }
 
   const csrfToken = crypto.randomUUID();
   c.header('Set-Cookie', adminSessionCookie(apiKey, config.sameSite), { append: true });
   c.header('Set-Cookie', csrfCookie(csrfToken, config.sameSite), { append: true });
+  console.log('[admin-auth] login succeeded', {
+    origin: c.req.header('origin') ?? '(none)',
+    staffId: staff.id,
+    role: staff.role,
+    sameSite: config.sameSite,
+  });
   return c.json({ success: true, data: staff, csrfToken });
 });
 

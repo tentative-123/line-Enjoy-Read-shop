@@ -1,0 +1,14 @@
+.git
+.github
+.wrangler
+.worktrees
+**/node_modules
+**/dist
+**/.next
+apps/web/out
+*.log
+.env
+.env.*
+!.env.example
+.line-harness-setup.json
+.line-harness-config.json

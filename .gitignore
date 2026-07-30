@@ -13,6 +13,7 @@ dist-mcp/
 *.toml.bak
 .env.production
 .env.staging
+**/.dev.vars
 apps/web/out/
 apps/worker/dist/
 .worktrees/

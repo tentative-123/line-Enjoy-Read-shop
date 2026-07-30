@@ -80,6 +80,7 @@ import { profileRefresh } from './routes/profile-refresh.js';
 import { richMenuGroups } from './routes/rich-menu-groups.js';
 import adminVersion from './routes/admin-version.js';
 import adminUpdate from './routes/admin-update.js';
+import cafe from './routes/cafe.js';
 import { isLinkPreviewBot } from './lib/og-bot.js';
 import { buildOgHtml } from './lib/og-html.js';
 import {
@@ -125,6 +126,10 @@ export type Env = {
     WORKER_PUBLIC_URL?: string;
     ADMIN_PUBLIC_URL?: string;
     LIFF_PUBLIC_URL?: string;
+    CAFE_SESSION_SECRET?: string;
+    QR_SIGNING_SECRET?: string;
+    GATE_DEVICE_SECRET?: string;
+    CAFE_MOCK_GATE?: string;
   };
   Variables: {
     staff: { id: string; name: string; role: 'owner' | 'admin' | 'staff' };
@@ -132,6 +137,25 @@ export type Env = {
 };
 
 const app = new Hono<Env>();
+
+// Railway diagnostics for admin login. Log only origins and boolean presence;
+// never log the API key, cookies, or any LINE/QR secrets. Keeping this before
+// CORS makes a rejected preflight visible in the Backend deployment log.
+app.use('/api/auth/*', async (c, next) => {
+  const origin = c.req.header('origin') ?? '(none)';
+  const allowedOrigin = resolveCorsOrigin(c.env, c.req.header('origin'), c.req.url);
+  console.log('[admin-auth] request', {
+    method: c.req.method,
+    path: new URL(c.req.url).pathname,
+    origin,
+    corsAllowed: Boolean(allowedOrigin),
+    configuredAdminOrigin: c.env.ADMIN_ORIGIN ?? '(unset)',
+    configuredWorkerUrl: c.env.WORKER_URL ?? '(unset)',
+    crossSiteEnabled: c.env.ADMIN_ALLOW_CROSS_SITE === 'true',
+    apiKeyConfigured: Boolean(c.env.API_KEY),
+  });
+  await next();
+});
 
 // CORS — credentialed cookie auth cannot use a wildcard origin. Reflect only
 // same-origin requests and origins on the ADMIN_ORIGIN allowlist; everything
@@ -200,6 +224,7 @@ app.route('/', messageTemplates);
 app.route('/', dedupPreview);
 app.route('/', profileRefresh);
 app.route('/', richMenuGroups);
+app.route('/', cafe);
 
 // Phase 5 (upgrade flow) — public build metadata endpoint. Mounted under
 // /admin/ but intentionally unauthenticated: the dashboard fetches /admin/version

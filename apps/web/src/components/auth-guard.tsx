@@ -20,16 +20,26 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
     const checkSession = async () => {
       try {
         localStorage.removeItem('lh_api_key')
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL?.replace(/\/+$/, '')
+        if (!apiUrl) throw new Error('NEXT_PUBLIC_API_URL is not configured')
         const res = await fetch(`${apiUrl}/api/auth/session`, { credentials: 'include' })
-        if (!res.ok) throw new Error('unauthenticated')
+        if (!res.ok) {
+          console.error('[auth-guard] Session request rejected', { status: res.status })
+          throw new Error(`unauthenticated (${res.status})`)
+        }
         const data = await res.json()
-        if (!data?.success || !data?.data) throw new Error('unauthenticated')
-        if (data.data.name) localStorage.setItem('lh_staff_name', data.data.name)
-        if (data.data.role) localStorage.setItem('lh_staff_role', data.data.role)
-        if (data.csrfToken) localStorage.setItem('lh_csrf', data.csrfToken)
+        // HTTP 2xx from this protected endpoint is the authentication decision.
+        // Profile data is useful for labels/RBAC hints but is not a credential;
+        // every real API remains protected by the HttpOnly cookie server-side.
+        if (!data?.success || !data?.data) {
+          console.warn('[auth-guard] Session accepted without optional staff profile', data)
+        }
+        if (data?.data?.name) localStorage.setItem('lh_staff_name', data.data.name)
+        if (data?.data?.role) localStorage.setItem('lh_staff_role', data.data.role)
+        if (data?.csrfToken) localStorage.setItem('lh_csrf', data.csrfToken)
         if (!cancelled) setChecked(true)
-      } catch {
+      } catch (error) {
+        console.error('[auth-guard] Redirecting to login', error)
         if (!cancelled) router.replace('/login')
       }
     }
